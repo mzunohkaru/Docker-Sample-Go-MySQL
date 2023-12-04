@@ -1,0 +1,53 @@
+version: '3.9'
+services:
+  db:
+    container_name: mysql_db
+    image: mysql:latest
+    healthcheck:
+      test:
+        # コンテナが立ち上がっているかを確認するコマンド
+        # コマンドが成功（終了ステータス0）を返すと、Dockerはコンテナを healthyと判断します
+        [
+          "CMD",
+          "mysqladmin",
+          # mysqladmin ツールの使用を定義します
+          "ping",
+          # MySQLサーバーに ping を送ります
+          "-u",
+          # ユーザー名
+          "root",
+          "-ppassword" # -p オプションは,パスワードを指定
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+      # 20秒間の間に mysqladmin ping コマンドを3秒間隔で、5回までリトライすることを指定
+    volumes:
+      - gorm-volume:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      # MySQLのrootユーザーのパスワードを設定
+      # パスワードは password に設定
+      MYSQL_DATABASE: dev
+      # MySQLサーバーが起動時に作成するデータベースの名前を設定
+      # データベース名は dev に設定
+    ports:
+      - 3306:3306
+  app:
+    build: .
+    container_name: app_c
+    ports:
+      - 8080:8080
+    volumes:
+      - ./src:/app
+    tty: true
+    depends_on:
+      db:
+        condition: service_healthy
+        # 一つのサービス（この場合は app）が他のサービス（この場合は db）に依存していることを示す
+        # 依存しているサービス（この場合は db）がヘルスチェックに合格になるまで、依存元のサービス（この場合は app）の起動を遅延させます
+volumes:
+  gorm-volume:
+      # ondition オプションは、Docker Composeのバージョン3以降では非推奨となっています。
+      # 代わりに、アプリケーション自体が依存サービスの準備ができるまで待つように設計することが推奨されています
